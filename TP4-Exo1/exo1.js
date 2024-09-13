@@ -216,6 +216,10 @@ class Figure {
 
             eyes.add(eye);
             eye.position.x = 0.36 * m;
+
+            if (i === 0) {
+                this.leftEye = eye;
+            }
         }
 
         this.head.add(eyes);
@@ -259,8 +263,8 @@ class Figure {
             const m = index % 2 === 0 ? 1 : -1;
             arm.rotation.z = this.params.armRotation * m;
         });
-        this.head.rotation.y = this.params.headRotation;
-        // this.leftEye.scale.x = this.leftEye.scale.y = this.leftEye.scale.z = this.params.leftEyeScale;
+        this.head.rotation.z = this.params.headRotation;
+        this.leftEye.scale.x = this.leftEye.scale.y = this.leftEye.scale.z = this.params.leftEyeScale;
     }
 
     init() {
@@ -279,14 +283,16 @@ figure.init();
 //     duration: 20
 // })
 
+CustomEase.create("custom", "M0,0 C0.052,-0.08 0.068,-0.223 0.231,0.057 0.362,0.284 0.67,0.851 1,0.851 ");
+
 let idleTimeline = gsap.timeline();
 idleTimeline.to(figure.params,
     {
-        headRotation: 0.25,
+        headRotation: 0.4,
         repeat: 1,
         yoyo: true,
-        duration: 0.75,
-        delay: 2.5,
+        duration: 0.5,
+        delay: 1,
         ease: "back.in"
     }
 )
@@ -309,6 +315,7 @@ document.addEventListener('keydown', (event) => {
             yoyo: true,
             duration: 0.5,
             repeat: 1,
+            ease: "custom",
         });
     }
     if (event.key == 'ArrowLeft') {
