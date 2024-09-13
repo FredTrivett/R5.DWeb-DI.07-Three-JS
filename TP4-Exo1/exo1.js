@@ -259,6 +259,8 @@ class Figure {
     update() {
         this.group.rotation.y = this.params.ry;
         this.group.position.y = this.params.y;
+        this.group.position.x = this.params.x;
+        this.group.position.z = this.params.z;
         this.arms.forEach((arm, index) => {
             const m = index % 2 === 0 ? 1 : -1;
             arm.rotation.z = this.params.armRotation * m;
@@ -304,6 +306,14 @@ idleTimeline.to(figure.params,
         duration: 1,
     }, ">2.2");
 
+let rySpeed = 0;
+
+let walkSpeed = 0;
+
+let leftKeyIsDown = false;
+let rightKeyIsDown = false;
+let upKeyIsDown = false;
+
 let jumpTimeline = gsap.timeline();
 document.addEventListener('keydown', (event) => {
     if ((event.key == ' ') && (jumpTimeline.isActive() == false)) {
@@ -318,16 +328,52 @@ document.addEventListener('keydown', (event) => {
             ease: "custom",
         });
     }
+
+});
+
+document.addEventListener('keydown', (event) => {
     if (event.key == 'ArrowLeft') {
         idleTimeline.pause();
-        figure.params.ry += 0.1;
-
-    }
-    if (event.key == 'ArrowRight') {
-        idleTimeline.pause();
-        figure.params.ry -= 0.1;
+        rySpeed += 0.02;
+        leftKeyIsDown = true;
     }
 });
+
+document.addEventListener('keydown', (event) => {
+    if (event.key == 'ArrowRight') {
+        idleTimeline.pause();
+        rySpeed -= 0.02;
+        rightKeyIsDown = true;
+    }
+});
+
+document.addEventListener('keydown', (event) => {
+    if (event.key == 'ArrowUp') {
+        idleTimeline.pause();
+        walkSpeed += 0.1;
+        upKeyIsDown = true;
+    }
+});
+
+
+document.addEventListener('keyup', (event) => {
+    if (event.key == 'ArrowLeft') {
+        leftKeyIsDown = false;
+    }
+    if (event.key == 'ArrowRight') {
+        rightKeyIsDown = false;
+    }
+    if (event.key == 'ArrowUp') {
+        upKeyIsDown = false;
+    }
+});
+
+// document.addEventListener('keydown', (event) => {
+//     if (event.key == 'ArrowUp') {
+//         idleTimeline.pause();
+//         walkSpeed += 0.05;
+//     }
+// });
 
 // Main loop
 gsap.ticker.add(() => {
@@ -336,9 +382,28 @@ gsap.ticker.add(() => {
     camHelper.visible = params.showHelpers;
     gridHelper.visible = params.showHelpers;
 
+    if (leftKeyIsDown) {
+        rySpeed += 0.002;
+    }
+    if (rightKeyIsDown) {
+        rySpeed -= 0.002;
+    }
+    if (upKeyIsDown) {
+        walkSpeed += 0.01;
+    }
+
     if ((idleTimeline.isActive() == false) && (jumpTimeline.isActive() == false)) {
         idleTimeline.restart();
     }
+
+    figure.params.ry += rySpeed;
+    rySpeed *= 0.96;
+
+    figure.params.x = figure.params.x + walkSpeed * Math.sin(figure.params.ry);
+    figure.params.z = figure.params.z + walkSpeed * Math.cos(figure.params.ry);
+    walkSpeed *= 0.96;
+
+    console.log(leftKeyIsDown, rightKeyIsDown, upKeyIsDown);
 
     figure.update();
     controls.update();
