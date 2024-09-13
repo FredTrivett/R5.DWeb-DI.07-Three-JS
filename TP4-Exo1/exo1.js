@@ -307,7 +307,8 @@ document.addEventListener('keydown', (event) => {
             armRotation: degreesToRadians(90),
             duration: 0.5,
             yoyo: true,
-            duration: 0.5
+            duration: 0.5,
+            repeat: 1,
         });
     }
     if (event.key == 'ArrowLeft') {
