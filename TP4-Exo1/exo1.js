@@ -106,7 +106,9 @@ class Figure {
             ry: 0,
             armRotation: 0,
             headRotation: 0,
-            leftEyeScale: 1
+            leftEyeScale: 1,
+            walkRotation: 0,
+
         };
 
         // Create group and add to scene
@@ -265,6 +267,23 @@ class Figure {
             const m = index % 2 === 0 ? 1 : -1;
             arm.rotation.z = this.params.armRotation * m;
         });
+
+        // arms animation
+        this.arms.forEach((arm, index) => {
+            const m = index % 2 === 0 ? 1 : -1;
+            //jump
+            arm.rotation.z = this.params.armRotation * m;
+            //walk
+            arm.rotation.x = this.params.walkRotation * -m;
+        });
+
+        // legs animation
+        this.body.children[1].children.forEach((leg, index) => {
+            const m = index % 2 === 0 ? 1 : -1;
+            //walk
+            leg.rotation.x = this.params.walkRotation * m;
+        });
+
         this.head.rotation.z = this.params.headRotation;
         this.leftEye.scale.x = this.leftEye.scale.y = this.leftEye.scale.z = this.params.leftEyeScale;
     }
@@ -305,6 +324,24 @@ idleTimeline.to(figure.params,
         yoyo: true,
         duration: 1,
     }, ">2.2");
+
+// walking anim
+let walkTl = gsap.timeline();
+walkTl.to(figure.params, {
+    walkRotation: degreesToRadians(45),
+    repeat: 1,
+    yoyo: true,
+    duration: 0.25,
+},);
+walkTl.to(figure.params, {
+    walkRotation: degreesToRadians(-45),
+    repeat: 1,
+    yoyo: true,
+    duration: 0.25,
+}, ">");
+
+walkTl.pause();
+
 
 let rySpeed = 0;
 
@@ -390,6 +427,11 @@ gsap.ticker.add(() => {
     }
     if (upKeyIsDown) {
         walkSpeed += 0.01;
+    }
+
+    if (walkSpeed >= 0.01 && !walkTl.isActive()) {
+        idleTimeline.pause(0);
+        walkTl.restart();
     }
 
     if ((idleTimeline.isActive() == false) && (jumpTimeline.isActive() == false)) {
