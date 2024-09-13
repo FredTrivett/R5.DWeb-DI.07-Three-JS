@@ -284,6 +284,18 @@ class Figure {
             leg.rotation.x = this.params.walkRotation * m;
         });
 
+        // // mise a jour des balles
+        // for (let i = bullets.length - 1; i >= 0; i--) {
+        //     if (bullets[i].isAlive()) {
+        //         bullets[i].update();
+        //     }
+        //     else {
+        //         scene.remove(bullets[i].mesh);
+        //         bullets.slice(i, 1);
+        //     }
+        // }
+
+        // idle animation
         this.head.rotation.z = this.params.headRotation;
         this.leftEye.scale.x = this.leftEye.scale.y = this.leftEye.scale.z = this.params.leftEyeScale;
     }
@@ -303,6 +315,47 @@ figure.init();
 //     repeat: -1,
 //     duration: 20
 // })
+
+class Bullet extends THREE.Group {
+    constructor(x, y, z, orientation) {
+        super();
+
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.orientation = orientation;
+        this.life = 200;
+
+        // create bullet 
+        this.bullet = new THREE.Mesh(
+            new THREE.SphereGeometry(1, 8, 8),
+            new THREE.MeshBasicMaterial({ color: 0xff0000 })
+        );
+
+        this.bullet, this.castShadow = true;
+        this.add(this.bullet);
+
+        // set position
+        this.position.set(x, y, z);
+    }
+
+    isAlive() {
+        return this.life > 0;
+    }
+
+    update() {
+        this.life--;
+
+        const speed = 1.1;
+
+        this.position.x += speed * Math.sin(this.orientation);
+        this.position.z += speed * Math.cos(this.orientation);
+    }
+}
+
+let bullets = [];
+
+
 
 CustomEase.create("custom", "M0,0 C0.052,-0.08 0.068,-0.223 0.231,0.057 0.362,0.284 0.67,0.851 1,0.851 ");
 
@@ -405,6 +458,21 @@ document.addEventListener('keyup', (event) => {
     }
 });
 
+// fire a bullet
+let bullet = [];
+document.addEventListener('keydown', (event) => {
+    if (event.key == 'f') {
+        let bullet = new Bullet(
+            figure.params.x,
+            figure.params.y,
+            figure.params.z,
+            figure.params.ry
+        );
+        scene.add(bullet);
+        bullets.push(bullet);
+    }
+});
+
 // document.addEventListener('keydown', (event) => {
 //     if (event.key == 'ArrowUp') {
 //         idleTimeline.pause();
@@ -436,6 +504,16 @@ gsap.ticker.add(() => {
 
     if ((idleTimeline.isActive() == false) && (jumpTimeline.isActive() == false)) {
         idleTimeline.restart();
+    }
+
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        if (bullets[i].isAlive()) {
+            bullets[i].update();
+        }
+        else {
+            scene.remove(bullets[i].mesh);
+            bullets.slice(i, 1);
+        }
     }
 
     figure.params.ry += rySpeed;
