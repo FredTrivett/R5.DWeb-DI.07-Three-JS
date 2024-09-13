@@ -23,6 +23,8 @@ export default class Figure extends THREE.Group {
         });
     }
 
+
+
     update() {
         this.position.y = this.params.y;
         this.position.x = this.params.x;
