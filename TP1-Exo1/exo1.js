@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+// import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 import Stats from 'three/addons/libs/stats.module.js';
-import Figure from './Figure.js'; // Import the Figure class
+import Figure from './figure.js'; // Import the Figure class
 
 // Scene
 const scene = new THREE.Scene();
@@ -50,7 +50,7 @@ gridHelper.material.transparent = true;
 scene.add(gridHelper);
 
 // Camera
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight);
+const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight);
 camera.position.set(10, 10, 20);
 scene.add(camera);
 
@@ -68,9 +68,9 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Controls
-const controls = new OrbitControls(camera, canvas);
-controls.enableDamping = true;
+// // Controls
+// const controls = new OrbitControls(camera, canvas);
+// controls.enableDamping = true;
 
 // Stats
 const container = document.getElementById('container');
@@ -136,17 +136,17 @@ class Bullet extends THREE.Group {
 
 // Event listeners
 document.addEventListener('keydown', (event) => {
-    if (event.key === 'ArrowLeft') {
+    if (event.key === 'a') {
         idleTimeline.pause();
         rySpeed += 0.02;
         leftKeyIsDown = true;
     }
-    if (event.key === 'ArrowRight') {
+    if (event.key === 'd') {
         idleTimeline.pause();
         rySpeed -= 0.02;
         rightKeyIsDown = true;
     }
-    if (event.key === 'ArrowUp') {
+    if (event.key === 'w') {
         idleTimeline.pause();
         walkSpeed += 0.1;
         upKeyIsDown = true;
@@ -174,13 +174,13 @@ document.addEventListener('keydown', (event) => {
 });
 
 document.addEventListener('keyup', (event) => {
-    if (event.key === 'ArrowLeft') {
+    if (event.key === 'a') {
         leftKeyIsDown = false;
     }
-    if (event.key === 'ArrowRight') {
+    if (event.key === 'd') {
         rightKeyIsDown = false;
     }
-    if (event.key === 'ArrowUp') {
+    if (event.key === 'w') {
         upKeyIsDown = false;
         figure.fadeToAction("Idle");
     }
@@ -213,16 +213,16 @@ gsap.ticker.add(() => {
 
     // Update rotation and position
     figure.params.ry += rySpeed;
-    rySpeed *= 0.93;
+    rySpeed *= 0.96;
 
     figure.params.x += walkSpeed * Math.sin(figure.params.ry);
     figure.params.z += walkSpeed * Math.cos(figure.params.ry);
-    walkSpeed *= 0.9;
+    walkSpeed *= 0.96;
 
-    // Update bullets
+    // Update bullets 
     for (let i = bullets.length - 1; i >= 0; i--) {
         bullets[i].update();
-        // Optionally remove bullets if they go too far
+        // Remove bullets if they go too far
         if (Math.abs(bullets[i].position.x) > 100 || Math.abs(bullets[i].position.z) > 100) {
             scene.remove(bullets[i]);
             bullets.splice(i, 1);
@@ -233,8 +233,14 @@ gsap.ticker.add(() => {
     const delta = gsap.ticker.deltaRatio() * (1 / 60); // Assuming 60 FPS
     figure.update(delta);
 
-    // Update controls and stats
-    controls.update();
+    // Camera follows the robot
+    const cameraOffset = new THREE.Vector3(0, 5, -10); // Offset from the robot
+    const offsetRotated = cameraOffset.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), figure.params.ry);
+    const desiredCameraPosition = figure.position.clone().add(offsetRotated);
+    camera.position.lerp(desiredCameraPosition, 0.1); // Smoothly interpolate to new position
+    camera.lookAt(figure.position);
+
+    // Update stats
     stats.update();
 
     // Render scene

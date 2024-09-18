@@ -6,9 +6,9 @@ export default class Figure extends THREE.Group {
         super();
         this.params = {
             x: 0,
-            y: 0,
+            y: 0, // Vertical position
             z: 0,
-            ry: 0
+            ry: 0 // Rotation around Y-axis
         };
         this.position.set(this.params.x, this.params.y, this.params.z);
 
@@ -16,6 +16,8 @@ export default class Figure extends THREE.Group {
         this.actions = {}; // Store animation actions
         this.state = "Idle"; // Default state
         this.onAnimationFinished = null; // Callback for when an animation finishes
+        this.isJumping = false; // Flag to prevent multiple jumps
+        this.isThumbsUp = false; // Flag to manage thumbs up state
 
         // Load the GLTF model
         const loader = new GLTFLoader();
@@ -56,12 +58,16 @@ export default class Figure extends THREE.Group {
 
         // Event listener for animation finish
         this.mixer.addEventListener('finished', () => {
-            if (this.state === "Jump" || this.state === "ThumbsUp") {
-                this.fadeToAction("Idle");
-                if (this.onAnimationFinished) {
-                    this.onAnimationFinished();
-                    this.onAnimationFinished = null; // Reset after calling
-                }
+            if (this.state === "Jump") {
+                this.isJumping = false; // Reset jumping flag
+            }
+            if (this.state === "ThumbsUp") {
+                this.isThumbsUp = false; // Reset thumbs up flag
+            }
+            this.fadeToAction("Idle");
+            if (this.onAnimationFinished) {
+                this.onAnimationFinished();
+                this.onAnimationFinished = null; // Reset after calling
             }
         });
 
@@ -123,8 +129,15 @@ export default class Figure extends THREE.Group {
     }
 
     thumbsUp() {
-        if (this.state !== "ThumbsUp") {
-            this.fadeToAction("ThumbsUp", 2);
+        if (!this.isThumbsUp) {
+            this.isThumbsUp = true; // Prevent overlapping thumbs up animations
+            this.fadeToAction("ThumbsUp", 0.2);
+
+            // Adjust playback speed to make the thumbs up animation longer
+            const action = this.actions["ThumbsUp"];
+            if (action) {
+                action.timeScale = 0.5; // Slow down the animation to make it last longer
+            }
         }
     }
 
