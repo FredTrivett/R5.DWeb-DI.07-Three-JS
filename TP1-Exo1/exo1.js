@@ -61,7 +61,7 @@ renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 
-// Resize 
+// Resize
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
@@ -84,28 +84,17 @@ const params = {
 };
 gui.add(params, "showHelpers");
 
-// Original code adapted to use GLTF Figure
-const degreesToRadians = (degrees) => {
-    return degrees * (Math.PI / 180);
-};
-
 // Create the GLTF Figure instance
 const figure = new Figure();
 scene.add(figure);
 
-// GSAP timelines (assuming GSAP is included in your project)
+// GSAP timelines
 let idleTimeline = gsap.timeline({ repeat: -1 });
 idleTimeline.to(figure.params, {
-    headRotation: 0.4,
     duration: 0.5,
     yoyo: true,
     ease: "back.in"
 });
-idleTimeline.to(figure.params, {
-    leftEyeScale: 0.5,
-    duration: 1,
-    yoyo: true
-}, ">2.2");
 
 // Movement variables
 let rySpeed = 0;
@@ -114,7 +103,6 @@ let walkSpeed = 0;
 let leftKeyIsDown = false;
 let rightKeyIsDown = false;
 let upKeyIsDown = false;
-let shiftKeyIsDown = false;
 
 let bullets = [];
 
@@ -123,9 +111,7 @@ class Bullet extends THREE.Group {
     constructor(x, y, z, orientation) {
         super();
 
-        this.life = 200;
-
-        // Create bullet 
+        // Create bullet
         const bulletMesh = new THREE.Mesh(
             new THREE.SphereGeometry(0.2, 8, 8),
             new THREE.MeshBasicMaterial({ color: 0xff0000 })
@@ -141,15 +127,8 @@ class Bullet extends THREE.Group {
         this.orientation = orientation;
     }
 
-    isAlive() {
-        return this.life > 0;
-    }
-
     update() {
-        this.life--;
-
         const speed = 1.1;
-
         this.position.x += speed * Math.sin(this.orientation);
         this.position.z += speed * Math.cos(this.orientation);
     }
@@ -172,18 +151,21 @@ document.addEventListener('keydown', (event) => {
         walkSpeed += 0.1;
         upKeyIsDown = true;
     }
-    if (event.key === 'Shift') {
-        shiftKeyIsDown = true;
+    if (event.key === ' ') { // Space bar for jump
+        idleTimeline.pause();
+        figure.jump();
     }
     if (event.key === 'f') {
         const bullet = new Bullet(
             figure.params.x,
-            figure.params.y,
+            figure.params.y + 1.5, // Adjusted to be at the robot's height
             figure.params.z,
             figure.params.ry
         );
         scene.add(bullet);
         bullets.push(bullet);
+
+        figure.thumbsUp(); // Play thumbs up animation
     }
 });
 
@@ -218,13 +200,11 @@ gsap.ticker.add(() => {
     }
 
     if (walkSpeed >= 0.01) {
-        if (shiftKeyIsDown) {
-            figure.run(1);
-        } else {
-            figure.walk(1);
-        }
+        figure.walk(1);
     } else {
-        figure.fadeToAction("Idle");
+        if (figure.state !== "Idle" && !upKeyIsDown) {
+            figure.fadeToAction("Idle");
+        }
     }
 
     // Update rotation and position
@@ -237,9 +217,9 @@ gsap.ticker.add(() => {
 
     // Update bullets
     for (let i = bullets.length - 1; i >= 0; i--) {
-        if (bullets[i].isAlive()) {
-            bullets[i].update();
-        } else {
+        bullets[i].update();
+        // Optionally remove bullets if they go too far
+        if (Math.abs(bullets[i].position.x) > 100 || Math.abs(bullets[i].position.z) > 100) {
             scene.remove(bullets[i]);
             bullets.splice(i, 1);
         }

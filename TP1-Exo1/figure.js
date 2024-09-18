@@ -8,9 +8,7 @@ export default class Figure extends THREE.Group {
             x: 0,
             y: 0, // Adjusted to 0 since GLTF models often have their own origin
             z: 0,
-            ry: 0,
-            headRotation: 0,
-            leftEyeScale: 1
+            ry: 0
         };
         this.position.set(this.params.x, this.params.y, this.params.z);
 
@@ -23,6 +21,7 @@ export default class Figure extends THREE.Group {
         loader.load('RobotExpressive.glb', (gltf) => {
             // Add model to the scene
             this.add(gltf.scene);
+            this.model = gltf.scene; // Reference to the model for later use
             gltf.scene.traverse((child) => {
                 if (child.isMesh) {
                     child.castShadow = true;
@@ -43,13 +42,22 @@ export default class Figure extends THREE.Group {
 
         // Set up animations
         animations.forEach((clip) => {
-            const action = this.mixer.clipAction(clip);
-            this.actions[clip.name] = action;
+            if (this.states.includes(clip.name)) {
+                const action = this.mixer.clipAction(clip);
+                this.actions[clip.name] = action;
 
-            // Configure certain animations
-            if (clip.name === "Jump" || clip.name === "Death") {
-                action.clampWhenFinished = true;
-                action.loop = THREE.LoopOnce;
+                // Configure certain animations
+                if (clip.name === "Jump" || clip.name === "ThumbsUp") {
+                    action.clampWhenFinished = true;
+                    action.loop = THREE.LoopOnce;
+                }
+            }
+        });
+
+        // Event listener for animation finish
+        this.mixer.addEventListener('finished', (e) => {
+            if (this.state === "Jump" || this.state === "ThumbsUp") {
+                this.fadeToAction("Idle");
             }
         });
 
@@ -63,7 +71,9 @@ export default class Figure extends THREE.Group {
             const newAction = this.actions[name];
 
             if (previousAction !== newAction) {
-                previousAction.fadeOut(duration);
+                if (previousAction) {
+                    previousAction.fadeOut(duration);
+                }
                 newAction
                     .reset()
                     .setEffectiveTimeScale(1)
@@ -82,19 +92,6 @@ export default class Figure extends THREE.Group {
         // Update position and rotation
         this.position.set(this.params.x, this.params.y, this.params.z);
         this.rotation.y = this.params.ry;
-
-        // Update head rotation and eye scale if necessary
-        if (this.model) {
-            const head = this.model.getObjectByName('Head');
-            if (head) {
-                head.rotation.z = this.params.headRotation;
-            }
-
-            const leftEye = this.model.getObjectByName('Eye_L');
-            if (leftEye) {
-                leftEye.scale.setScalar(this.params.leftEyeScale);
-            }
-        }
     }
 
     walk(direction) {
@@ -104,11 +101,24 @@ export default class Figure extends THREE.Group {
         this.fadeToAction("Running");
     }
 
-    run(direction) {
-        const speed = 0.1; // Faster speed for running
-        this.params.x += speed * Math.sin(this.params.ry) * direction;
-        this.params.z += speed * Math.cos(this.params.ry) * direction;
-        this.fadeToAction("Running");
+    jump() {
+        if (this.state !== "Jump") {
+            this.fadeToAction("Jump", 0.2);
+            // Simulate jump motion using GSAP
+            gsap.to(this.position, {
+                y: this.params.y + 2, // Jump up 2 units
+                duration: 0.5,
+                yoyo: true,
+                repeat: 1,
+                ease: "power2.out"
+            });
+        }
+    }
+
+    thumbsUp() {
+        if (this.state !== "ThumbsUp") {
+            this.fadeToAction("ThumbsUp", 0.01);
+        }
     }
 
     rotate(direction) {
