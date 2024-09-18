@@ -6,7 +6,7 @@ export default class Figure extends THREE.Group {
         super();
         this.params = {
             x: 0,
-            y: 0, // Adjusted to 0 since GLTF models often have their own origin
+            y: 0,
             z: 0,
             ry: 0
         };
@@ -15,13 +15,13 @@ export default class Figure extends THREE.Group {
         this.mixer = null; // Animation mixer
         this.actions = {}; // Store animation actions
         this.state = "Idle"; // Default state
+        this.onAnimationFinished = null; // Callback for when an animation finishes
 
         // Load the GLTF model
         const loader = new GLTFLoader();
         loader.load('RobotExpressive.glb', (gltf) => {
             // Add model to the scene
             this.add(gltf.scene);
-            this.model = gltf.scene; // Reference to the model for later use
             gltf.scene.traverse((child) => {
                 if (child.isMesh) {
                     child.castShadow = true;
@@ -55,9 +55,13 @@ export default class Figure extends THREE.Group {
         });
 
         // Event listener for animation finish
-        this.mixer.addEventListener('finished', (e) => {
+        this.mixer.addEventListener('finished', () => {
             if (this.state === "Jump" || this.state === "ThumbsUp") {
                 this.fadeToAction("Idle");
+                if (this.onAnimationFinished) {
+                    this.onAnimationFinished();
+                    this.onAnimationFinished = null; // Reset after calling
+                }
             }
         });
 
@@ -103,21 +107,24 @@ export default class Figure extends THREE.Group {
 
     jump() {
         if (this.state !== "Jump") {
-            this.fadeToAction("Jump", 0.2);
-            // Simulate jump motion using GSAP
-            gsap.to(this.position, {
-                y: this.params.y + 2, // Jump up 2 units
-                duration: 0.5,
+            this.fadeToAction("Jump", 0.3);
+            // Simulate jump motion by animating this.params.y
+            gsap.to(this.params, {
+                y: 2, // Jump up to y = 2
+                duration: 0.3,
                 yoyo: true,
                 repeat: 1,
-                ease: "power2.out"
+                ease: "power2.out",
+                onComplete: () => {
+                    this.params.y = 0; // Reset to ground level
+                }
             });
         }
     }
 
     thumbsUp() {
         if (this.state !== "ThumbsUp") {
-            this.fadeToAction("ThumbsUp", 0.01);
+            this.fadeToAction("ThumbsUp", 2);
         }
     }
 

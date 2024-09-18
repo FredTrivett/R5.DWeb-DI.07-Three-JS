@@ -156,16 +156,20 @@ document.addEventListener('keydown', (event) => {
         figure.jump();
     }
     if (event.key === 'f') {
-        const bullet = new Bullet(
-            figure.params.x,
-            figure.params.y + 1.5, // Adjusted to be at the robot's height
-            figure.params.z,
-            figure.params.ry
-        );
-        scene.add(bullet);
-        bullets.push(bullet);
+        // Play thumbs up animation
+        figure.thumbsUp();
 
-        figure.thumbsUp(); // Play thumbs up animation
+        // Set a callback to fire the bullet after the animation finishes
+        figure.onAnimationFinished = () => {
+            const bullet = new Bullet(
+                figure.params.x,
+                figure.params.y + 1.5, // Adjusted to be at the robot's height
+                figure.params.z,
+                figure.params.ry
+            );
+            scene.add(bullet);
+            bullets.push(bullet);
+        };
     }
 });
 
@@ -209,11 +213,11 @@ gsap.ticker.add(() => {
 
     // Update rotation and position
     figure.params.ry += rySpeed;
-    rySpeed *= 0.96;
+    rySpeed *= 0.93;
 
     figure.params.x += walkSpeed * Math.sin(figure.params.ry);
     figure.params.z += walkSpeed * Math.cos(figure.params.ry);
-    walkSpeed *= 0.96;
+    walkSpeed *= 0.9;
 
     // Update bullets
     for (let i = bullets.length - 1; i >= 0; i--) {
