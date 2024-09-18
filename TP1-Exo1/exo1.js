@@ -36,12 +36,11 @@ scene.add(camHelper);
 // Plane
 const plane = new THREE.Mesh(
     new THREE.PlaneGeometry(100, 100, 10, 10),
-    new THREE.MeshPhongMaterial({
-        color: 0xcbcbcb,
-    })
+    new THREE.MeshPhongMaterial({ color: 0xcbcbcb })
 );
 plane.rotation.x = -Math.PI / 2;
 plane.receiveShadow = true;
+plane.castShadow = false;
 scene.add(plane);
 
 // Grid helper
@@ -62,7 +61,7 @@ renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 
-// Resize
+// Resize 
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
@@ -85,28 +84,106 @@ const params = {
 };
 gui.add(params, "showHelpers");
 
+// Original code adapted to use GLTF Figure
+const degreesToRadians = (degrees) => {
+    return degrees * (Math.PI / 180);
+};
+
 // Create the GLTF Figure instance
 const figure = new Figure();
 scene.add(figure);
 
-// Handle keyboard input
+// GSAP timelines (assuming GSAP is included in your project)
+let idleTimeline = gsap.timeline({ repeat: -1 });
+idleTimeline.to(figure.params, {
+    headRotation: 0.4,
+    duration: 0.5,
+    yoyo: true,
+    ease: "back.in"
+});
+idleTimeline.to(figure.params, {
+    leftEyeScale: 0.5,
+    duration: 1,
+    yoyo: true
+}, ">2.2");
+
+// Movement variables
+let rySpeed = 0;
+let walkSpeed = 0;
+
 let leftKeyIsDown = false;
 let rightKeyIsDown = false;
 let upKeyIsDown = false;
 let shiftKeyIsDown = false;
 
+let bullets = [];
+
+// Bullet class
+class Bullet extends THREE.Group {
+    constructor(x, y, z, orientation) {
+        super();
+
+        this.life = 200;
+
+        // Create bullet 
+        const bulletMesh = new THREE.Mesh(
+            new THREE.SphereGeometry(0.2, 8, 8),
+            new THREE.MeshBasicMaterial({ color: 0xff0000 })
+        );
+
+        bulletMesh.castShadow = true;
+        this.add(bulletMesh);
+
+        // Set position
+        this.position.set(x, y, z);
+
+        // Orientation
+        this.orientation = orientation;
+    }
+
+    isAlive() {
+        return this.life > 0;
+    }
+
+    update() {
+        this.life--;
+
+        const speed = 1.1;
+
+        this.position.x += speed * Math.sin(this.orientation);
+        this.position.z += speed * Math.cos(this.orientation);
+    }
+}
+
+// Event listeners
 document.addEventListener('keydown', (event) => {
     if (event.key === 'ArrowLeft') {
+        idleTimeline.pause();
+        rySpeed += 0.02;
         leftKeyIsDown = true;
     }
     if (event.key === 'ArrowRight') {
+        idleTimeline.pause();
+        rySpeed -= 0.02;
         rightKeyIsDown = true;
     }
     if (event.key === 'ArrowUp') {
+        idleTimeline.pause();
+        walkSpeed += 0.1;
         upKeyIsDown = true;
     }
     if (event.key === 'Shift') {
         shiftKeyIsDown = true;
+    }
+    if (event.key === 'f') {
+        const bullet = new Bullet(
+            figure.params.x,
+            figure.params.y,
+            figure.params.z,
+            figure.params.ry
+        );
+        scene.add(bullet);
+        bullets.push(bullet);
     }
 });
 
@@ -119,56 +196,63 @@ document.addEventListener('keyup', (event) => {
     }
     if (event.key === 'ArrowUp') {
         upKeyIsDown = false;
-        figure.fadeToAction("Idle"); // Switch back to idle animation
-    }
-    if (event.key === 'Shift') {
-        shiftKeyIsDown = false;
+        figure.fadeToAction("Idle");
     }
 });
 
-// Movement speeds
-let rySpeed = 0;
-let walkSpeed = 0;
-
-// GSAP ticker for the main loop
+// Main loop using gsap.ticker
 gsap.ticker.add(() => {
     axesHelper.visible = params.showHelpers;
     dlHelper.visible = params.showHelpers;
     camHelper.visible = params.showHelpers;
     gridHelper.visible = params.showHelpers;
 
-    // Handle rotation and movement
     if (leftKeyIsDown) {
-        rySpeed += 0.02;
+        rySpeed += 0.002;
     }
     if (rightKeyIsDown) {
-        rySpeed -= 0.02;
+        rySpeed -= 0.002;
     }
     if (upKeyIsDown) {
-        walkSpeed += shiftKeyIsDown ? 0.2 : 0.1; // Adjust speed based on shift key
-        if (shiftKeyIsDown) {
-            figure.run(1); // Run forward if shift is pressed
-        } else {
-            figure.walk(1); // Walk forward
-        }
+        walkSpeed += 0.01;
     }
 
-    // Apply gradual slowdown to rotation and movement
+    if (walkSpeed >= 0.01) {
+        if (shiftKeyIsDown) {
+            figure.run(1);
+        } else {
+            figure.walk(1);
+        }
+    } else {
+        figure.fadeToAction("Idle");
+    }
+
+    // Update rotation and position
     figure.params.ry += rySpeed;
-    rySpeed *= 0.96; // Smooth deceleration for rotation
+    rySpeed *= 0.96;
 
     figure.params.x += walkSpeed * Math.sin(figure.params.ry);
     figure.params.z += walkSpeed * Math.cos(figure.params.ry);
-    walkSpeed *= 0.96; // Smooth deceleration for movement
+    walkSpeed *= 0.96;
+
+    // Update bullets
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        if (bullets[i].isAlive()) {
+            bullets[i].update();
+        } else {
+            scene.remove(bullets[i]);
+            bullets.splice(i, 1);
+        }
+    }
 
     // Update figure
-    const delta = gsap.ticker.deltaRatio();
+    const delta = gsap.ticker.deltaRatio() * (1 / 60); // Assuming 60 FPS
     figure.update(delta);
 
     // Update controls and stats
     controls.update();
     stats.update();
 
-    // Render the scene
+    // Render scene
     renderer.render(scene, camera);
 });

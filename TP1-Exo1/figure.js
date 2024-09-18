@@ -6,82 +6,106 @@ export default class Figure extends THREE.Group {
         super();
         this.params = {
             x: 0,
-            y: 1.4,
+            y: 0, // Adjusted to 0 since GLTF models often have their own origin
             z: 0,
             ry: 0,
+            headRotation: 0,
+            leftEyeScale: 1
         };
         this.position.set(this.params.x, this.params.y, this.params.z);
 
-        this.mixer = null; // Initialize mixer
+        this.mixer = null; // Animation mixer
         this.actions = {}; // Store animation actions
-        this.state = "Idle"; // Default state to idle
+        this.state = "Idle"; // Default state
 
+        // Load the GLTF model
         const loader = new GLTFLoader();
         loader.load('RobotExpressive.glb', (gltf) => {
+            // Add model to the scene
             this.add(gltf.scene);
-            this.loadAnimation(gltf.scene, gltf.animations); // Load animations
-        }, undefined, function (e) {
-            console.error(e);
+            gltf.scene.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                }
+            });
+            // Load animations
+            this.loadAnimations(gltf.scene, gltf.animations);
+        }, undefined, (error) => {
+            console.error('An error happened', error);
         });
     }
 
-    loadAnimation(model, animations) {
+    loadAnimations(model, animations) {
         this.mixer = new THREE.AnimationMixer(model);
-        this.states = ["Idle", "Walking", "Running", "Jump", "ThumbsUp"]; // List of possible states
+
+        // List of animations to consider
+        this.states = ["Idle", "Running", "Jump", "ThumbsUp"];
 
         // Set up animations
-        for (let i = 0; i < animations.length; i++) {
-            const clip = animations[i];
-            if (this.states.includes(clip.name)) {
-                const action = this.mixer.clipAction(clip);
-                this.actions[clip.name] = action;
+        animations.forEach((clip) => {
+            const action = this.mixer.clipAction(clip);
+            this.actions[clip.name] = action;
 
-                // Set specific behaviors for some animations
-                if (clip.name === "Jump" || clip.name === "ThumbsUp") {
-                    action.clampWhenFinished = true;
-                    action.loop = THREE.LoopOnce;
-                }
+            // Configure certain animations
+            if (clip.name === "Jump" || clip.name === "Death") {
+                action.clampWhenFinished = true;
+                action.loop = THREE.LoopOnce;
             }
-        }
+        });
 
-        // Play the idle animation by default
+        // Play the idle animation
         this.fadeToAction("Idle");
     }
 
     fadeToAction(name, duration = 0.5) {
-        if (this.actions[name] && this.state !== name) {
-            // Fade out the current action
-            if (this.actions[this.state]) {
-                this.actions[this.state].fadeOut(duration);
-            }
+        if (this.actions[name]) {
+            const previousAction = this.actions[this.state];
+            const newAction = this.actions[name];
 
-            // Fade in the new action
-            this.state = name;
-            this.actions[this.state].reset().fadeIn(duration).play();
+            if (previousAction !== newAction) {
+                previousAction.fadeOut(duration);
+                newAction
+                    .reset()
+                    .setEffectiveTimeScale(1)
+                    .setEffectiveWeight(1)
+                    .fadeIn(duration)
+                    .play();
+                this.state = name;
+            }
         }
     }
 
     update(delta) {
-        if (!this.mixer) return; // Exit if the mixer isn't defined
-
-        // Update the position and rotation of the figure
+        if (this.mixer) {
+            this.mixer.update(delta);
+        }
+        // Update position and rotation
         this.position.set(this.params.x, this.params.y, this.params.z);
         this.rotation.y = this.params.ry;
 
-        // Update animations
-        this.mixer.update(delta);
+        // Update head rotation and eye scale if necessary
+        if (this.model) {
+            const head = this.model.getObjectByName('Head');
+            if (head) {
+                head.rotation.z = this.params.headRotation;
+            }
+
+            const leftEye = this.model.getObjectByName('Eye_L');
+            if (leftEye) {
+                leftEye.scale.setScalar(this.params.leftEyeScale);
+            }
+        }
     }
 
-    // Movement and animation methods
     walk(direction) {
-        const speed = 0.1;
+        const speed = 0.05; // Adjusted speed
         this.params.x += speed * Math.sin(this.params.ry) * direction;
         this.params.z += speed * Math.cos(this.params.ry) * direction;
-        this.fadeToAction("Walking");
+        this.fadeToAction("Running");
     }
 
     run(direction) {
-        const speed = 0.2; // Faster speed for running
+        const speed = 0.1; // Faster speed for running
         this.params.x += speed * Math.sin(this.params.ry) * direction;
         this.params.z += speed * Math.cos(this.params.ry) * direction;
         this.fadeToAction("Running");
