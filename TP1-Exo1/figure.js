@@ -6,35 +6,37 @@ export default class Figure extends THREE.Group {
         super();
         this.params = {
             x: 0,
-            y: 0,
+            y: 1.4,
             z: 0,
             ry: 0,
-        }
-        this.position.x = this.params.x;
-        this.position.y = this.params.y;
-        this.position.z = this.params.z;
+        };
+        this.position.set(this.params.x, this.params.y, this.params.z);
 
-        var self = this;
+        this.mixer = null; // Initialize mixer
+        this.actions = {}; // Store animation actions
+        this.state = "Idle"; // Default state to idle
+
         const loader = new GLTFLoader();
         loader.load('RobotExpressive.glb', (gltf) => {
-            self.add(gltf.scene);
+            this.add(gltf.scene);
+            this.loadAnimation(gltf.scene, gltf.animations); // Load animations
         }, undefined, function (e) {
             console.error(e);
         });
     }
 
-    loadAnimation(model, animation) {
+    loadAnimation(model, animations) {
         this.mixer = new THREE.AnimationMixer(model);
+        this.states = ["Idle", "Walking", "Running", "Jump", "ThumbsUp"]; // List of possible states
 
-        this.states = ["Idle", "Running", "Jump", "ThumbsUp"];
-
-        this.actions = {};
-
-        for (let i = 0; i < this.states.length; i++) {
+        // Set up animations
+        for (let i = 0; i < animations.length; i++) {
             const clip = animations[i];
-            if (this.state.includes(clip.name)) {
+            if (this.states.includes(clip.name)) {
                 const action = this.mixer.clipAction(clip);
                 this.actions[clip.name] = action;
+
+                // Set specific behaviors for some animations
                 if (clip.name === "Jump" || clip.name === "ThumbsUp") {
                     action.clampWhenFinished = true;
                     action.loop = THREE.LoopOnce;
@@ -42,19 +44,51 @@ export default class Figure extends THREE.Group {
             }
         }
 
-        this.state = "Idle";
-        this.actions[this.state].play();
+        // Play the idle animation by default
+        this.fadeToAction("Idle");
     }
 
-    update(dt) {
-        // Vertical position
-        this.position.y = this.params.y;
-        // Ground position
-        this.position.x = this.params.x;
-        this.position.z = this.params.z;
+    fadeToAction(name, duration = 0.5) {
+        if (this.actions[name] && this.state !== name) {
+            // Fade out the current action
+            if (this.actions[this.state]) {
+                this.actions[this.state].fadeOut(duration);
+            }
 
+            // Fade in the new action
+            this.state = name;
+            this.actions[this.state].reset().fadeIn(duration).play();
+        }
+    }
+
+    update(delta) {
+        if (!this.mixer) return; // Exit if the mixer isn't defined
+
+        // Update the position and rotation of the figure
+        this.position.set(this.params.x, this.params.y, this.params.z);
         this.rotation.y = this.params.ry;
 
-        this.mixer.update(dt);
+        // Update animations
+        this.mixer.update(delta);
+    }
+
+    // Movement and animation methods
+    walk(direction) {
+        const speed = 0.1;
+        this.params.x += speed * Math.sin(this.params.ry) * direction;
+        this.params.z += speed * Math.cos(this.params.ry) * direction;
+        this.fadeToAction("Walking");
+    }
+
+    run(direction) {
+        const speed = 0.2; // Faster speed for running
+        this.params.x += speed * Math.sin(this.params.ry) * direction;
+        this.params.z += speed * Math.cos(this.params.ry) * direction;
+        this.fadeToAction("Running");
+    }
+
+    rotate(direction) {
+        const rotationSpeed = 0.05;
+        this.params.ry += direction * rotationSpeed;
     }
 }

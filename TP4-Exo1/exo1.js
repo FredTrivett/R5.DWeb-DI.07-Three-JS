@@ -473,13 +473,6 @@ document.addEventListener('keydown', (event) => {
     }
 });
 
-// document.addEventListener('keydown', (event) => {
-//     if (event.key == 'ArrowUp') {
-//         idleTimeline.pause();
-//         walkSpeed += 0.05;
-//     }
-// });
-
 // Main loop
 gsap.ticker.add(() => {
     axesHelper.visible = params.showHelpers;
