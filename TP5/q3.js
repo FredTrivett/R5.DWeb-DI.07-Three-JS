@@ -43,3 +43,9 @@ function draw() {
         springs[i].display();
     }
 }
+
+function mousePressed() {
+    let mousePos = createVector(mouseX, mouseY);
+    for (let i = 0; i < masses.length; i++) {
+        let force = p5.Vector.sub(mousePos, masses[i].position);
+        force.setMag(0.5); // Adjust the magnitude of the force
