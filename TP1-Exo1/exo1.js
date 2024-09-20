@@ -4,6 +4,9 @@ import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 import Stats from 'three/addons/libs/stats.module.js';
 import Figure from './figure.js'; // Import the Figure class
 
+import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+
 // Scene
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xe0e0e0);
@@ -186,6 +189,32 @@ document.addEventListener('keyup', (event) => {
     }
 });
 
+let text = null
+const fontLoader = new FontLoader();
+const myFont = "helvetiker_regular.typeface.json"
+const textMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+function createText(count) {
+    scene.remove(text);
+    fontLoader.load(myFont, (font) => {
+        const textGeometry = new TextGeometry('shots: ' + count, {
+            font: font,
+            size: 1,
+            height: 0.2,
+            curveSegments: 12,
+            bevelEnabled: true,
+            bevelThickness: 0.03,
+            bevelSize: 0.02,
+            bevelOffset: 0,
+            bevelSegments: 5
+        });
+        text = new THREE.Mesh(textGeometry, textMaterial);
+        text.position.set(-10, 10, -10);
+        scene.add(text);
+    });
+}
+createText(0);
+
+
 // Main loop using gsap.ticker
 gsap.ticker.add(() => {
     axesHelper.visible = params.showHelpers;
@@ -240,9 +269,22 @@ gsap.ticker.add(() => {
     camera.position.lerp(desiredCameraPosition, 0.1); // Smoothly interpolate to new position
     camera.lookAt(figure.position);
 
+    // Update text
+    if (text) {
+        const localTextPosition = new THREE.Vector3(-2, 10, -20);
+        const textPosition = camera.localToWorld(localTextPosition);
+        text.lookAt(camera.position);
+        text.position.copy(textPosition);
+    }
+
+    renderer.render(scene, camera);
+
     // Update stats
     stats.update();
 
     // Render scene
     renderer.render(scene, camera);
 });
+
+
+
